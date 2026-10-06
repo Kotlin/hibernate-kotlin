@@ -1,22 +1,15 @@
 [versions]
-kotlin = "2.4.0"
-spring-boot = "4.1.0"
+kotlin = "2.4.20"
 hibernate = "8.0.0-SNAPSHOT"
 junit = "6.0.3"
 
 [libraries]
-spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
-spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
-spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 hibernate-core = { module = "org.hibernate.orm:hibernate-core", version.ref = "hibernate" }
-hibernate-community-dialects = { module = "org.hibernate.orm:hibernate-community-dialects" }
-sqlite-jdbc = { module = "org.xerial:sqlite-jdbc" }
-h2 = { module = "com.h2database:h2" }
+hibernate-community-dialects = { module = "org.hibernate.orm:hibernate-community-dialects", version.ref = "hibernate" }
+sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version = "3.53.2.0" }
+h2 = { module = "com.h2database:h2", version = "2.4.240" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
-kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
-spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

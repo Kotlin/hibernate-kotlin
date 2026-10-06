@@ -16,7 +16,7 @@ public class KotlinUuidJavaType : AbstractClassJavaType<Uuid>(Uuid::class.java),
     public override fun getRecommendedJdbcType(
         context: JdbcTypeIndicators?
     ): JdbcType? {
-        return UUID_DELEGATE.getRecommendedJdbcType(context)
+        return DELEGATE.getRecommendedJdbcType(context)
     }
 
 
@@ -29,19 +29,22 @@ public class KotlinUuidJavaType : AbstractClassJavaType<Uuid>(Uuid::class.java),
             return null
         }
 
-        if (Uuid::class.java.isAssignableFrom(requestedType)) {
-            return requestedType.cast(value)
+        return when {
+            Uuid::class.java.isAssignableFrom(requestedType) -> requestedType.cast(value)
+            String::class.java.isAssignableFrom(requestedType) -> requestedType.cast(value.toHexDashString())
+            ByteArray::class.java.isAssignableFrom(requestedType) -> requestedType.cast(value.toByteArray())
+            else -> {
+                // fallback to Java mapping
+                val javaUuid = value.toLongs { mostSignificantBits, leastSignificantBits ->
+                    UUID(mostSignificantBits, leastSignificantBits)
+                }
+                DELEGATE.unwrap(
+                    javaUuid,
+                    requestedType,
+                    options
+                )
+            }
         }
-
-        val javaUuid = value.toLongs { mostSignificantBits, leastSignificantBits ->
-             UUID(mostSignificantBits, leastSignificantBits)
-        }
-
-        return UUID_DELEGATE.unwrap(
-            javaUuid,
-            requestedType,
-            options
-        )
     }
 
 
@@ -53,16 +56,20 @@ public class KotlinUuidJavaType : AbstractClassJavaType<Uuid>(Uuid::class.java),
             return null
         }
 
-        if (rawValue is Uuid) {
-            return rawValue
+        return when (rawValue) {
+            is Uuid -> rawValue
+            is String -> Uuid.parseHexDash(rawValue)
+            is ByteArray -> Uuid.fromByteArray(rawValue)
+            else -> {
+                // fallback to Java mapping
+                val javaUuid = DELEGATE.wrap<X?>(
+                    rawValue,
+                    options
+                )
+
+                Uuid.fromLongs(javaUuid.mostSignificantBits, javaUuid.leastSignificantBits)
+            }
         }
-
-        val javaUuid = UUID_DELEGATE.wrap<X?>(
-            rawValue,
-            options
-        )
-
-        return Uuid.fromLongs(javaUuid.mostSignificantBits, javaUuid.leastSignificantBits)
     }
 
     public override fun toString(value: Uuid?): String? {
@@ -80,7 +87,7 @@ public class KotlinUuidJavaType : AbstractClassJavaType<Uuid>(Uuid::class.java),
         dialect: Dialect?,
         jdbcType: JdbcType?
     ): Long {
-        return UUID_DELEGATE.getDefaultSqlLength(
+        return DELEGATE.getDefaultSqlLength(
             dialect,
             jdbcType
         )
@@ -95,7 +102,7 @@ public class KotlinUuidJavaType : AbstractClassJavaType<Uuid>(Uuid::class.java),
     public companion object {
         public val INSTANCE: KotlinUuidJavaType = KotlinUuidJavaType()
 
-        private val UUID_DELEGATE: UUIDJavaType = UUIDJavaType.INSTANCE
+        private val DELEGATE: UUIDJavaType = UUIDJavaType.INSTANCE
 
         private val UUID_TRANSFORMER =
             object : UuidCapableJavaType.ValueTransformer<Uuid> {

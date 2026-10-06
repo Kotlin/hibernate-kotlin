@@ -1,12 +1,14 @@
 package org.hibernate.type.descriptor.kotlin
 
+import org.hibernate.SharedSessionContract
 import org.hibernate.dialect.Dialect
 import org.hibernate.type.SqlTypes
 import org.hibernate.type.descriptor.WrapperOptions
 import org.hibernate.type.descriptor.java.AbstractClassJavaType
-import org.hibernate.type.descriptor.java.ImmutableMutabilityPlan
+import org.hibernate.type.descriptor.java.MutabilityPlan
 import org.hibernate.type.descriptor.jdbc.JdbcType
 import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators
+import java.io.Serializable
 import java.math.BigDecimal
 import kotlin.math.abs
 import kotlin.math.min
@@ -16,10 +18,34 @@ import kotlin.time.Duration.Companion.seconds
 
 /**
  *
+ * Supports finite values in range `-4611686018427387902000000`..`4611686018427387902000000` nanoseconds.
+ * Except for the infinity representations described below, reading values outside this range throws an [ArithmeticException].
+ *
+ * For exact numeric columns, duration is stored in nanoseconds.
+ * The values `-9223461171522140000000000000` and `9223461171522140000000000000` encode `-Duration.INFINITE` and `Duration.INFINITE`, respectively.
+ * The full finite range requires a precision of at least 25, and infinite values require a precision of at least 28.
+ * `BIGINT` columns only support finite durations whose nanosecond value fits in a [Long].
+ *
+ * For text columns, duration is stored in ISO-8601 format.
+ * The values `"-PT9999999999999H"` and `"PT9999999999999H"` encode `-Duration.INFINITE` and `Duration.INFINITE`, respectively.
+ *
+ * For floating-point columns, duration is stored in nanoseconds.
+ * The values `-9223461171522140000000000000` and `9223461171522140000000000000` encode `-Duration.INFINITE` and `Duration.INFINITE`, respectively.
+ * `-Inf` and `Inf` also represent `-Duration.INFINITE` and `Duration.INFINITE`, respectively.
+ * Floating-point precision may cause additional rounding of finite values.
+ *
+ * The Duration value is serialized as a string in ISO-8601 format, while infinite values are encoded as `"PT9999999999999H"` and `"-PT9999999999999H"`.
+ *
+ *
+ * Due to the specifics of [Duration] implementation, some values can't be represented in Duration.
+ *
+ * If the absolute raw value is greater than or equal to `4 611 686 018 427 000 000`, there are windows with a period of `1 000 000`.
+ * Values inside each window are truncated toward zero to the nearest whole millisecond.
+ *
  * Based on [org.hibernate.type.descriptor.java.DurationJavaType].
  */
 internal class KotlinDurationJavaType :
-    AbstractClassJavaType<Duration>(Duration::class.java, ImmutableMutabilityPlan.instance<Duration?>()) {
+    AbstractClassJavaType<Duration>(Duration::class.java, DurationMutabilityPlan) {
     override fun isInstance(value: Any?): Boolean {
         return value is Duration
     }
@@ -42,42 +68,14 @@ internal class KotlinDurationJavaType :
         if (value == null) {
             return null
         }
-        if (value.isInfinite()) {
-            return if (value.isPositive()) DurationConstants.INFINIT_MAGIC_NUMBER else DurationConstants.NEG_INFINIT_MAGIC_NUMBER
-        }
-        return value.toComponents { seconds, nanoseconds ->
-            if (seconds == 0L) nanoseconds.toString()
-            else seconds.toString() + abs(nanoseconds).toString().padStart(9, '0')
-        }
+        return value.toIsoString()
     }
 
     override fun fromString(string: CharSequence?): Duration? {
         if (string == null) {
             return null
         }
-        if (string.contentEquals(DurationConstants.INFINIT_MAGIC_NUMBER)) return Duration.INFINITE
-        if (string.contentEquals(DurationConstants.NEG_INFINIT_MAGIC_NUMBER)) return -Duration.INFINITE
-
-        val negative = string.firstOrNull() == '-'
-        val start = if (negative || string.firstOrNull() == '+') 1 else 0
-        if (string.length == start) throw NumberFormatException("Invalid duration: $string")
-        for (index in start until string.length) {
-            if (string[index] !in '0'..'9') throw NumberFormatException("Invalid duration: $string")
-        }
-
-        // check in string form because Duration truncates nanoseconds exceeding the maximum Duration value till millisecond
-        if (exceedsMaxDuration(string, start)) {
-            throw ArithmeticException("Duration overflow: $string nanoseconds exceeds the finite Duration range")
-        }
-
-        if (string.length - start <= 9) {
-            return java.lang.Long.parseLong(string, 0, string.length, 10).nanoseconds
-        }
-        // The last nine digits are the nanosecond component; the sign applies to both parts.
-        val cutoff = string.length - 9
-        val seconds = java.lang.Long.parseLong(string, 0, cutoff, 10)
-        val nanos = Integer.parseInt(string, cutoff, string.length, 10)
-        return seconds.seconds + (if (negative) -nanos else nanos).nanoseconds
+        return parseIsoDuration(string.toString())
     }
 
     override fun <X> unwrap(duration: Duration?, type: Class<X?>, options: WrapperOptions?): X? {
@@ -161,9 +159,15 @@ internal class KotlinDurationJavaType :
         }
 
         if (value is Double) {
+            if (value.isInfinite()) {
+                return if (value > 0) Duration.INFINITE else -Duration.INFINITE
+            }
+            if (value.isNaN()) {
+                throw ArithmeticException("Duration overflow: NaN value is not allowed")
+            }
             if (DurationConstants.isPositiveInfinityMarker(value)) return Duration.INFINITE
             if (DurationConstants.isNegativeInfinityMarker(value)) return -Duration.INFINITE
-            if (!value.isFinite() || abs(value) > DurationConstants.MAX_FINITE_NANOSECONDS_DOUBLE) {
+            if (abs(value) > DurationConstants.MAX_FINITE_NANOSECONDS_DOUBLE) {
                 throw ArithmeticException("Duration overflow: $value nanoseconds exceeds the finite Duration range")
             }
 
@@ -180,28 +184,10 @@ internal class KotlinDurationJavaType :
         }
 
         if (value is String) {
-            val duration = Duration.parseIsoString(value)
-            if (duration.isInfinite() && value != duration.toIsoString()) {
-                throw ArithmeticException("Duration overflow: $value exceeds the finite Duration range")
-            }
-            return duration
+            return parseIsoDuration(value)
         }
 
         throw unknownWrap(value.javaClass)
-    }
-
-    private fun exceedsMaxDuration(value: CharSequence, start: Int): Boolean {
-        var firstDigit = start
-        while (firstDigit < value.length && value[firstDigit] == '0') firstDigit++
-
-        val significantDigits = value.length - firstDigit
-        val maximum = DurationConstants.MAX_FINITE_NANOSECONDS_STRING
-        if (significantDigits != maximum.length) return significantDigits > maximum.length
-        for (index in maximum.indices) {
-            val difference = value[firstDigit + index] - maximum[index]
-            if (difference != 0) return difference > 0
-        }
-        return false
     }
 
     public override fun getDefaultSqlPrecision(dialect: Dialect, jdbcType: JdbcType): Int = if (jdbcType.ddlTypeCode == SqlTypes.INTERVAL_SECOND) {
@@ -223,6 +209,15 @@ internal class KotlinDurationJavaType :
             0 // For non-interval types, we use the type numeric(21)
     }
 
+    private fun parseIsoDuration(value: String): Duration {
+        val duration = Duration.parseIsoString(value)
+        // duration.isInfinite() can be a mark of overflow, so compare original value with INFINITE representations
+        if (duration.isInfinite() && value != LazyConstants.ISO_STRING_INFINITE && value != LazyConstants.ISO_STRING_NEG_INFINITE) {
+            throw ArithmeticException("Duration overflow: $value exceeds the finite Duration range")
+        }
+        return duration
+    }
+
     // Avoids initializing the BigDecimal class when not strictly necessary
     // Initializing BigDecimal generates a lot of allocations
     private object BigDecimalHolder {
@@ -231,6 +226,11 @@ internal class KotlinDurationJavaType :
         val MAX_FINITE_NANOSECONDS: BigDecimal = BigDecimal.valueOf(Long.MAX_VALUE / 2 - 1).movePointRight(6)
         val INFINIT_MAGIC_NUMBER_BIG_DECIMAL = DurationConstants.INFINIT_MAGIC_NUMBER.toBigDecimal()
         val NEG_INFINIT_MAGIC_NUMBER_BIG_DECIMAL = DurationConstants.NEG_INFINIT_MAGIC_NUMBER.toBigDecimal()
+    }
+
+    private object LazyConstants {
+        val ISO_STRING_INFINITE = Duration.INFINITE.toIsoString()
+        val ISO_STRING_NEG_INFINITE = "-$ISO_STRING_INFINITE"
     }
 
     private object DurationConstants {
@@ -266,4 +266,16 @@ internal class KotlinDurationJavaType :
          */
         val INSTANCE: KotlinDurationJavaType = KotlinDurationJavaType()
     }
+}
+
+private object DurationMutabilityPlan : MutabilityPlan<Duration> {
+    override fun isMutable(): Boolean = false
+
+    override fun deepCopy(value: Duration?): Duration? = value
+
+    override fun disassemble(value: Duration?, session: SharedSessionContract?): Serializable? =
+        KotlinDurationJavaType.INSTANCE.toString(value)
+
+    override fun assemble(cached: Serializable?, session: SharedSessionContract?): Duration? =
+        KotlinDurationJavaType.INSTANCE.fromString(cached as String?)
 }
