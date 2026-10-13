@@ -10,9 +10,9 @@ import kotlin.time.Instant
 import java.time.Instant as JavaInstant
 
 /**
+ * Descriptor for [Instant] handling from Kotlin stdlib.
  *
- *
- * Delegates calls to [InstantJavaType] so as not to duplicate the complex logic for working with dates exclusions.
+ * Delegates main work to [InstantJavaType] so as not to duplicate the complex logic for working with dates exclusions.
  */
 public class KotlinInstantJavaType : AbstractClassJavaType<Instant>(
     Instant::class.java,
@@ -21,7 +21,7 @@ public class KotlinInstantJavaType : AbstractClassJavaType<Instant>(
 
     override fun <X> unwrap(
         value: Instant?,
-        type: Class<X?>?,
+        type: Class<X>,
         options: WrapperOptions?
     ): X? {
         if (value == null) return null

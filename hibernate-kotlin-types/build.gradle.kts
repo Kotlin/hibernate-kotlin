@@ -2,15 +2,25 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    `maven-publish`
 }
+
+group = "org.hibernate.orm"
+version = libs.versions.hibernate.get()
 
 kotlin {
     explicitApi()
     jvmToolchain(21)
 }
 
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
 dependencies {
     compileOnly(libs.hibernate.core)
+    compileOnly(kotlin("stdlib"))
 
     testImplementation(libs.hibernate.core)
     testImplementation(libs.hibernate.community.dialects)
@@ -33,6 +43,36 @@ repositories {
     maven("https://central.sonatype.com/repository/maven-snapshots/") {
         mavenContent {
             snapshotsOnly()
+        }
+    }
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("Maven") {
+            from(components["java"])
+
+            artifactId = "hibernate-kotlin-types"
+
+            pom {
+                name = "Hibernate mappers for Kotlin types"
+                description = "Hibernate type mappers for Kotlin standard library types"
+                url = "https://github.com/Kotlin/hibernate-kotlin-types"
+
+                licenses {
+                    license {
+                        name = "Apache License, Version 2.0"
+                        url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = "TODO" // ???
+                        name = "TODO" // ???
+                    }
+                }
+            }
         }
     }
 }

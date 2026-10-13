@@ -17,8 +17,9 @@ import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.Duration.Companion.seconds
 
 /**
+ * Descriptor for [Duration] handling from Kotlin stdlib.
  *
- * Supports finite values in range `-4611686018427387902000000`..`4611686018427387902000000` nanoseconds.
+ * Supports finite nanoseconds values in range `-4611686018427387902000000`..`4611686018427387902000000`.
  * Except for the infinity representations described below, reading values outside this range throws an [ArithmeticException].
  *
  * For exact numeric columns, duration is stored in nanoseconds.
@@ -78,7 +79,7 @@ internal class KotlinDurationJavaType :
         return parseIsoDuration(string.toString())
     }
 
-    override fun <X> unwrap(duration: Duration?, type: Class<X?>, options: WrapperOptions?): X? {
+    override fun <X> unwrap(duration: Duration?, type: Class<X>, options: WrapperOptions?): X? {
         if (duration == null) {
             return null
         }

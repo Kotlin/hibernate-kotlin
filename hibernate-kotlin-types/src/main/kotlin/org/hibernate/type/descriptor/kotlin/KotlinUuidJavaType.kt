@@ -11,18 +11,31 @@ import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators
 import java.util.*
 import kotlin.uuid.Uuid
 
+/**
+ * Descriptor for [Uuid] handling from Kotlin stdlib.
+ * Converts Kotlin UUID value from and to [String], [ByteArray] or [java.util.UUID].
+ *
+ * String and bytes representations are the same as for Java UUID.
+ * Therefore, this descriptor is interchangeable with [UUIDJavaType] in terms of values in the database.
+ */
 public class KotlinUuidJavaType : AbstractClassJavaType<Uuid>(Uuid::class.java), UuidCapableJavaType<Uuid> {
 
-    public override fun getRecommendedJdbcType(
-        context: JdbcTypeIndicators?
-    ): JdbcType? {
-        return DELEGATE.getRecommendedJdbcType(context)
+    override fun isInstance(value: Any?): Boolean {
+        return value is Uuid
+    }
+
+    override fun cast(value: Any?): Uuid? {
+        return value as Uuid?
+    }
+
+    override fun getRecommendedJdbcType(context: JdbcTypeIndicators): JdbcType? {
+        return context.getJdbcType(context.preferredSqlTypeCodeForUuid)
     }
 
 
     public override fun <X> unwrap(
         value: Uuid?,
-        requestedType: Class<X?>,
+        requestedType: Class<X>,
         options: WrapperOptions?
     ): X? {
         if (value == null) {
@@ -33,17 +46,12 @@ public class KotlinUuidJavaType : AbstractClassJavaType<Uuid>(Uuid::class.java),
             Uuid::class.java.isAssignableFrom(requestedType) -> requestedType.cast(value)
             String::class.java.isAssignableFrom(requestedType) -> requestedType.cast(value.toHexDashString())
             ByteArray::class.java.isAssignableFrom(requestedType) -> requestedType.cast(value.toByteArray())
-            else -> {
-                // fallback to Java mapping
-                val javaUuid = value.toLongs { mostSignificantBits, leastSignificantBits ->
+            UUID::class.java.isAssignableFrom(requestedType) -> {
+                requestedType.cast(value.toLongs { mostSignificantBits, leastSignificantBits ->
                     UUID(mostSignificantBits, leastSignificantBits)
-                }
-                DELEGATE.unwrap(
-                    javaUuid,
-                    requestedType,
-                    options
-                )
+                })
             }
+            else -> throw unknownUnwrap(requestedType)
         }
     }
 
@@ -60,15 +68,8 @@ public class KotlinUuidJavaType : AbstractClassJavaType<Uuid>(Uuid::class.java),
             is Uuid -> rawValue
             is String -> Uuid.parseHexDash(rawValue)
             is ByteArray -> Uuid.fromByteArray(rawValue)
-            else -> {
-                // fallback to Java mapping
-                val javaUuid = DELEGATE.wrap<X?>(
-                    rawValue,
-                    options
-                )
-
-                Uuid.fromLongs(javaUuid.mostSignificantBits, javaUuid.leastSignificantBits)
-            }
+            is UUID -> Uuid.fromLongs(rawValue.mostSignificantBits, rawValue.leastSignificantBits)
+            else -> throw unknownWrap(rawValue.javaClass)
         }
     }
 
