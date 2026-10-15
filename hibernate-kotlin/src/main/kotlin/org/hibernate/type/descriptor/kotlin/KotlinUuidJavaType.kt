@@ -12,7 +12,7 @@ import java.util.*
 import kotlin.uuid.Uuid
 
 /**
- * Descriptor for [Uuid] handling from Kotlin stdlib.
+ * Descriptor for [Uuid] handling from Kotlin standard library.
  * Converts Kotlin UUID value from and to [String], [ByteArray] or [java.util.UUID].
  *
  * String and bytes representations are the same as for Java UUID.

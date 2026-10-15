@@ -18,6 +18,8 @@ public enum class KotlinUuidVersion {
 
 /**
  * Annotation for ID generation using Kotlin algorithms.
+ *
+ * Allows using the algorithm provided by the Kotlin standard library in cases where they are preferred over generators provided by Hibernate
  */
 @IdGeneratorType(KotlinUuidGeneratorImpl::class)
 @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION)

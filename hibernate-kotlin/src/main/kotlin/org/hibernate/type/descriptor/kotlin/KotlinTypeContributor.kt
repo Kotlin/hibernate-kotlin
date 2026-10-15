@@ -5,7 +5,7 @@ import org.hibernate.boot.model.TypeContributor
 import org.hibernate.service.ServiceRegistry
 
 /**
- * Contributes descriptors for Kotlin types from stdlib.
+ * Contributes descriptors for types from Kotlin standard library.
  */
 public class KotlinTypeContributor : TypeContributor {
     public override fun contribute(typeContributions: TypeContributions, serviceRegistry: ServiceRegistry?) {

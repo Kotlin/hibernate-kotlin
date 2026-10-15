@@ -52,12 +52,12 @@ publishing {
         create<MavenPublication>("Maven") {
             from(components["java"])
 
-            artifactId = "hibernate-kotlin-types"
+            artifactId = "hibernate-kotlin"
 
             pom {
                 name = "Hibernate mappers for Kotlin types"
                 description = "Hibernate type mappers for Kotlin standard library types"
-                url = "https://github.com/Kotlin/hibernate-kotlin-types"
+                url = "https://github.com/Kotlin/hibernate-kotlin"
 
                 licenses {
                     license {
