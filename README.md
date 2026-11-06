@@ -24,12 +24,13 @@ If you use Maven:
     <groupId>org.hibernate.orm</groupId>
     <artifactId>hibernate-kotlin</artifactId>
     <version>8.0.0-SNAPSHOT</version>
+    <scope>runtime</scope>
 </dependency>
 ```
 
 If you use Gradle:
 ```kotlin
 dependencies {
-    implementation("org.hibernate.orm:hibernate-kotlin:8.0.0-SNAPSHOT")
+    runtimeOnly("org.hibernate.orm:hibernate-kotlin:8.0.0-SNAPSHOT")
 }
 ```
