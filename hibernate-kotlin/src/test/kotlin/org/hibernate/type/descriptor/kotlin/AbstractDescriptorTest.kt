@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test
 import java.io.Serializable
 
 /**
+ * Base class for Kotlin type descriptor tests.
+ *
  * Adopted from Hibernate's [org.hibernate.orm.test.mapping.type.java.AbstractDescriptorTest]
  */
 abstract class AbstractDescriptorTest<T : Any>(
@@ -24,6 +26,9 @@ abstract class AbstractDescriptorTest<T : Any>(
 
     protected abstract val shouldBeMutable: Boolean
 
+    /**
+     * Tests [JavaType.areEqual] method.
+     */
     @Test
     fun testEquality() {
         assertTrue(typeDescriptor.areEqual(testData.original, testData.original))
@@ -31,6 +36,9 @@ abstract class AbstractDescriptorTest<T : Any>(
         assertFalse(typeDescriptor.areEqual(testData.original, testData.different))
     }
 
+    /**
+     * Tests simmetry for [JavaType.toString] and [JavaType.fromString] methods.
+     */
     @Test
     fun testExternalization() {
         val externalized = typeDescriptor.toString(testData.original)
@@ -39,8 +47,10 @@ abstract class AbstractDescriptorTest<T : Any>(
         assertTrue(typeDescriptor.areEqual(testData.original, consumed))
     }
 
+    /**
+     * Tests simmetry for [JavaType.unwrap] and [JavaType.wrap] methods.
+     */
     @Test
-    @Suppress("UNCHECKED_CAST")
     fun testPassThrough() {
         assertTrue(typeDescriptor.areEqual(testData.original, typeDescriptor.wrap(testData.original, null)))
         assertTrue(
@@ -48,13 +58,16 @@ abstract class AbstractDescriptorTest<T : Any>(
                 testData.original,
                 typeDescriptor.unwrap(
                     testData.original,
-                    typeDescriptor.javaTypeClass as Class<T?>,
+                    typeDescriptor.javaTypeClass,
                     null,
                 ),
             ),
         )
     }
 
+    /**
+     * Tests MutabilityPlan and its support for the second level cache: methods [org.hibernate.type.descriptor.java.MutabilityPlan.deepCopy], [org.hibernate.type.descriptor.java.MutabilityPlan.disassemble] and [org.hibernate.type.descriptor.java.MutabilityPlan.assemble].
+     */
     @Test
     fun testMutabilityPlan() {
         val mutabilityPlan = typeDescriptor.mutabilityPlan

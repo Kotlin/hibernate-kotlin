@@ -17,8 +17,9 @@ import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.Duration.Companion.seconds
 
 /**
+ * Descriptor for [Duration] handling from Kotlin standard library.
  *
- * Supports finite values in range `-4611686018427387902000000`..`4611686018427387902000000` nanoseconds.
+ * Supports finite nanoseconds values in range `-4611686018427387902000000`..`4611686018427387902000000`.
  * Except for the infinity representations described below, reading values outside this range throws an [ArithmeticException].
  *
  * For exact numeric columns, duration is stored in nanoseconds.
@@ -78,7 +79,7 @@ internal class KotlinDurationJavaType :
         return parseIsoDuration(string.toString())
     }
 
-    override fun <X> unwrap(duration: Duration?, type: Class<X?>, options: WrapperOptions?): X? {
+    override fun <X> unwrap(duration: Duration?, type: Class<X>, options: WrapperOptions?): X? {
         if (duration == null) {
             return null
         }
@@ -89,8 +90,8 @@ internal class KotlinDurationJavaType :
 
         if (BigDecimal::class.java.isAssignableFrom(type)) {
             val bigDecimal = when {
-                duration.isInfinite() && duration.isPositive() -> BigDecimalHolder.INFINIT_MAGIC_NUMBER_BIG_DECIMAL
-                duration.isInfinite() && duration.isNegative() -> BigDecimalHolder.NEG_INFINIT_MAGIC_NUMBER_BIG_DECIMAL
+                duration.isInfinite() && duration.isPositive() -> BigDecimalHolder.INFINITE_MAGIC_NUMBER_BIG_DECIMAL
+                duration.isInfinite() && duration.isNegative() -> BigDecimalHolder.NEG_INFINITE_MAGIC_NUMBER_BIG_DECIMAL
                 else -> duration.toComponents { seconds, nanoseconds ->
                     BigDecimal(seconds)
                         .movePointRight(9)
@@ -103,8 +104,8 @@ internal class KotlinDurationJavaType :
 
         if (Double::class.javaObjectType.isAssignableFrom(type)) {
             val double = when {
-                duration.isInfinite() && duration.isPositive() -> DurationConstants.INFINIT_MAGIC_NUMBER_DOUBLE
-                duration.isInfinite() && duration.isNegative() -> DurationConstants.NEG_INFINIT_MAGIC_NUMBER_DOUBLE
+                duration.isInfinite() && duration.isPositive() -> DurationConstants.INFINITE_MAGIC_NUMBER_DOUBLE
+                duration.isInfinite() && duration.isNegative() -> DurationConstants.NEG_INFINITE_MAGIC_NUMBER_DOUBLE
                 else -> duration.toComponents { seconds, nanoseconds ->
                     seconds.toDouble() * DurationConstants.BILLION_DOUBLE + nanoseconds
                 }
@@ -139,8 +140,8 @@ internal class KotlinDurationJavaType :
         }
 
         if (value is BigDecimal) {
-            if (value.compareTo(BigDecimalHolder.INFINIT_MAGIC_NUMBER_BIG_DECIMAL) == 0) return Duration.INFINITE
-            if (value.compareTo(BigDecimalHolder.NEG_INFINIT_MAGIC_NUMBER_BIG_DECIMAL) == 0) return -Duration.INFINITE
+            if (value.compareTo(BigDecimalHolder.INFINITE_MAGIC_NUMBER_BIG_DECIMAL) == 0) return Duration.INFINITE
+            if (value.compareTo(BigDecimalHolder.NEG_INFINITE_MAGIC_NUMBER_BIG_DECIMAL) == 0) return -Duration.INFINITE
 
             // Check before conversion: Duration can truncate sub-millisecond overflow or saturate to infinity.
             if (value.abs() > BigDecimalHolder.MAX_FINITE_NANOSECONDS) {
@@ -224,8 +225,8 @@ internal class KotlinDurationJavaType :
         val BILLION: BigDecimal = BigDecimal.valueOf(1000000000L)
         // Kotlin Duration reserves Long.MAX_VALUE / 2 milliseconds for infinity.
         val MAX_FINITE_NANOSECONDS: BigDecimal = BigDecimal.valueOf(Long.MAX_VALUE / 2 - 1).movePointRight(6)
-        val INFINIT_MAGIC_NUMBER_BIG_DECIMAL = DurationConstants.INFINIT_MAGIC_NUMBER.toBigDecimal()
-        val NEG_INFINIT_MAGIC_NUMBER_BIG_DECIMAL = DurationConstants.NEG_INFINIT_MAGIC_NUMBER.toBigDecimal()
+        val INFINITE_MAGIC_NUMBER_BIG_DECIMAL = DurationConstants.INFINIT_MAGIC_NUMBER.toBigDecimal()
+        val NEG_INFINITE_MAGIC_NUMBER_BIG_DECIMAL = DurationConstants.NEG_INFINIT_MAGIC_NUMBER.toBigDecimal()
     }
 
     private object LazyConstants {
@@ -248,16 +249,16 @@ internal class KotlinDurationJavaType :
         const val BILLION_DOUBLE: Double = 1_000_000_000.0
 
         // This decimal marker resolves to the same value at Float and Double precision.
-        val INFINIT_MAGIC_NUMBER_DOUBLE: Double = INFINIT_MAGIC_NUMBER.toDouble()
-        val NEG_INFINIT_MAGIC_NUMBER_DOUBLE: Double = -INFINIT_MAGIC_NUMBER_DOUBLE
+        val INFINITE_MAGIC_NUMBER_DOUBLE: Double = INFINIT_MAGIC_NUMBER.toDouble()
+        val NEG_INFINITE_MAGIC_NUMBER_DOUBLE: Double = -INFINITE_MAGIC_NUMBER_DOUBLE
         const val MAX_FINITE_NANOSECONDS_STRING: String = "4611686018427387902000000"
         const val MAX_FINITE_NANOSECONDS_DOUBLE: Double = (Long.MAX_VALUE / 2 - 1).toDouble() * 1_000_000.0
 
         fun isPositiveInfinityMarker(value: Double): Boolean =
-            value == INFINIT_MAGIC_NUMBER_DOUBLE
+            value == INFINITE_MAGIC_NUMBER_DOUBLE
 
         fun isNegativeInfinityMarker(value: Double): Boolean =
-            value == NEG_INFINIT_MAGIC_NUMBER_DOUBLE
+            value == NEG_INFINITE_MAGIC_NUMBER_DOUBLE
     }
 
     internal companion object {
