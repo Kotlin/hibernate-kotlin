@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.testing.logging.TestLogEvent
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -11,11 +12,20 @@ version = libs.versions.hibernate.get()
 kotlin {
     explicitApi()
     jvmToolchain(21)
+
+    compilerOptions {
+        // Min JDK version supported by Hibernate
+        jvmTarget.set(JvmTarget.JVM_17)
+        freeCompilerArgs.add("-opt-in=kotlin.uuid.ExperimentalUuidApi")
+    }
 }
 
 java {
     withJavadocJar()
     withSourcesJar()
+
+    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_17
 }
 
 dependencies {

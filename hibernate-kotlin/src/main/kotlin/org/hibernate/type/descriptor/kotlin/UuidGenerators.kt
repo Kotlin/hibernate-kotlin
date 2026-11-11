@@ -5,7 +5,6 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor
 import org.hibernate.generator.GeneratorCreationContext
 import org.hibernate.id.IdentifierGenerator
 import java.lang.reflect.Member
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 /**
@@ -34,7 +33,6 @@ internal class KotlinUuidGeneratorImpl(
 ) : IdentifierGenerator {
     private val version: KotlinUuidVersion = annotation.version
 
-    @OptIn(ExperimentalUuidApi::class)
     override fun generate(
         session: SharedSessionContractImplementor?,
         entity: Any?
