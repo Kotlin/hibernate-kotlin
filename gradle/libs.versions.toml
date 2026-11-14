@@ -1,6 +1,9 @@
 [versions]
 kotlin = "2.3.0"
 hibernate = "8.0.0-SNAPSHOT"
+hibernate60 = "6.0.0.Final"
+hibernate66 = "6.6.29.Final"
+hibernate70 = "7.0.0.Final"
 junit = "6.0.3"
 
 [libraries]

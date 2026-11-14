@@ -35,12 +35,13 @@ abstract class BaseSessionFactoryTest {
     fun setUpSessionFactory() {
         beforeSessionFactoryCreated()
 
+        // Use literals for backward compatibility with old Hibernate
         val builder = StandardServiceRegistryBuilder()
             .applySetting(AvailableSettings.DIALECT, dialectClass.name)
-            .applySetting(AvailableSettings.JAKARTA_JDBC_DRIVER, jdbcDriver)
-            .applySetting(AvailableSettings.JAKARTA_JDBC_URL, jdbcUrl)
+            .applySetting("hibernate.connection.driver_class", jdbcDriver)
+            .applySetting("hibernate.connection.url", jdbcUrl)
             .applySetting(AvailableSettings.HBM2DDL_AUTO, "create-drop")
-        jdbcUser?.let { builder.applySetting(AvailableSettings.JAKARTA_JDBC_USER, it) }
+        jdbcUser?.let { builder.applySetting("hibernate.connection.username", it) }
         serviceRegistry = builder.build()
 
         sessionFactory = MetadataSources(serviceRegistry)
