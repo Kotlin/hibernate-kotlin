@@ -4,6 +4,8 @@ hibernate = "8.0.0-SNAPSHOT"
 hibernate60 = "6.0.0.Final"
 hibernate66 = "6.6.29.Final"
 hibernate70 = "7.0.0.Final"
+hibernate71 = "7.1.8.Final" # Spring Boot 4.0.0
+hibernate74 = "7.4.1.Final" # Spring Boot 4.1.0
 junit = "6.0.3"
 
 [libraries]

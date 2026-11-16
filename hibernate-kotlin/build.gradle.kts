@@ -63,6 +63,8 @@ val compatibilityVersions = mapOf(
     "60" to libs.versions.hibernate60.get(),
     "66" to libs.versions.hibernate66.get(),
     "70" to libs.versions.hibernate70.get(),
+    "71" to libs.versions.hibernate71.get(),
+    "74" to libs.versions.hibernate74.get(),
 )
 
 val compatibilityTests = compatibilityVersions.map { (suffix, hibernateVersion) ->

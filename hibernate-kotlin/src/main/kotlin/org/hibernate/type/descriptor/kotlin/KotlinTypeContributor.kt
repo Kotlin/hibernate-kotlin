@@ -14,16 +14,15 @@ public class KotlinTypeContributor : TypeContributor {
     }
 
     internal fun contribute(typeContributions: TypeContributions, classLoader: ClassLoader) {
-        val hibernateVersion = readHibernateVersion()
-        if (hibernateVersion == null || hibernateVersion.first < 8) {
-            // hibernate < 8 or unknown
-            if (isClassPresent("kotlin.uuid.Uuid", classLoader)) {
-                typeContributions.contributeJavaType(KotlinUuidNoIdJavaType.INSTANCE)
-            }
-        } else {
+        if (isClassPresent("org.hibernate.type.descriptor.java.UuidCapableJavaType", classLoader)) {
             // hibernate 8+
             if (isClassPresent("kotlin.uuid.Uuid", classLoader)) {
                 typeContributions.contributeJavaType(KotlinUuidJavaType.INSTANCE)
+            }
+        } else {
+            // hibernate < 8 or unknown
+            if (isClassPresent("kotlin.uuid.Uuid", classLoader)) {
+                typeContributions.contributeJavaType(KotlinUuidNoIdJavaType.INSTANCE)
             }
         }
 
@@ -57,11 +56,15 @@ public class KotlinTypeContributor : TypeContributor {
     }
 
     internal fun parseHibernateVersion(version: String?): Triple<Int, Int, Int>? {
-        val match = Regex("^([0-9]+)\\.([0-9]+)\\.([0-9]+)(?=[.-]|$)")
-            .find(version ?: return null) ?: return null
-        val major = match.groupValues[1].toIntOrNull() ?: return null
-        val minor = match.groupValues[2].toIntOrNull() ?: return null
-        val patch = match.groupValues[3].toIntOrNull() ?: return null
+        version?: return null
+        val parts = version.substringBefore("-").split('.')
+        if (parts.size < 3) {
+            return null
+        }
+
+        val major = parts[0].toIntOrNull() ?: return null
+        val minor = parts[1].toIntOrNull() ?: return null
+        val patch = parts[2].toIntOrNull() ?: return null
         return Triple(major, minor, patch)
     }
 }
