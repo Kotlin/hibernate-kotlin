@@ -63,7 +63,11 @@ val compatibilityVersions = mapOf(
     "60" to libs.versions.hibernate60.get(),
     "66" to libs.versions.hibernate66.get(),
     "70" to libs.versions.hibernate70.get(),
+    "710" to libs.versions.hibernate710.get(),
     "71" to libs.versions.hibernate71.get(),
+    "720" to libs.versions.hibernate720.get(),
+    "730" to libs.versions.hibernate730.get(),
+    "740" to libs.versions.hibernate740.get(),
     "74" to libs.versions.hibernate74.get(),
 )
 
