@@ -5,13 +5,13 @@ import org.hibernate.dialect.Dialect
 import org.hibernate.type.SqlTypes
 import org.hibernate.type.descriptor.WrapperOptions
 import org.hibernate.type.descriptor.java.AbstractClassJavaType
+import org.hibernate.type.descriptor.java.DurationJavaType
 import org.hibernate.type.descriptor.java.MutabilityPlan
 import org.hibernate.type.descriptor.jdbc.JdbcType
 import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators
 import java.io.Serializable
 import java.math.BigDecimal
 import kotlin.math.abs
-import kotlin.math.min
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.Duration.Companion.seconds
@@ -47,6 +47,12 @@ import kotlin.time.Duration.Companion.seconds
  */
 internal class KotlinDurationJavaType :
     AbstractClassJavaType<Duration>(Duration::class.java, DurationMutabilityPlan) {
+
+    private val isHibernateBefore62 by lazy {
+        KotlinTypeContributor().readHibernateVersion()
+            ?.let { (major, minor) -> major == 6 && minor < 2 } == true
+    }
+
     override fun isInstance(value: Any?): Boolean {
         return value is Duration
     }
@@ -56,9 +62,16 @@ internal class KotlinDurationJavaType :
     }
 
     override fun getRecommendedJdbcType(context: JdbcTypeIndicators): JdbcType? {
+        val preferredType = context.preferredSqlTypeCodeForDuration
+        // Hibernate 6.0–6.1 defaults to INTERVAL, but we use numeric nanoseconds
+        val jdbcTypeCode = if (isHibernateBefore62 && preferredType == SqlTypes.INTERVAL_SECOND) {
+            SqlTypes.NUMERIC
+        } else {
+            preferredType
+        }
         return context.typeConfiguration
             .jdbcTypeRegistry
-            .getDescriptor(context.preferredSqlTypeCodeForDuration)
+            .getDescriptor(jdbcTypeCode)
     }
 
     override fun useObjectEqualsHashCode(): Boolean {
@@ -191,24 +204,9 @@ internal class KotlinDurationJavaType :
         throw unknownWrap(value.javaClass)
     }
 
-    public override fun getDefaultSqlPrecision(dialect: Dialect, jdbcType: JdbcType): Int = if (jdbcType.ddlTypeCode == SqlTypes.INTERVAL_SECOND) {
-        // Usually the maximum precision for interval types
-        18
-    } else {
-        // 19+9 = 28 digits is the maximum possible Duration
-        // precision, but is an unnecessarily large default,
-        // except for cosmological applications. Thirty
-        // millennia in both timelike directions should be
-        // sufficient time for most businesses!
-        min(21, dialect.typeSizingProfile.defaultDecimalPrecision())
-    }
-
-    public override fun getDefaultSqlScale(dialect: Dialect, jdbcType: JdbcType): Int {
-        return if (jdbcType.ddlTypeCode == SqlTypes.INTERVAL_SECOND)
-            dialect.typeSizingProfile.defaultIntervalSecondScale()
-        else
-            0 // For non-interval types, we use the type numeric(21)
-    }
+    // Delegate sizing to original JavaType
+    public override fun getDefaultSqlPrecision(dialect: Dialect, jdbcType: JdbcType): Int = DELEGATE.getDefaultSqlPrecision(dialect, jdbcType)
+    public override fun getDefaultSqlScale(dialect: Dialect, jdbcType: JdbcType): Int = DELEGATE.getDefaultSqlScale(dialect, jdbcType)
 
     private fun parseIsoDuration(value: String): Duration {
         val duration = Duration.parseIsoString(value)
@@ -266,6 +264,8 @@ internal class KotlinDurationJavaType :
          * Singleton access
          */
         val INSTANCE: KotlinDurationJavaType = KotlinDurationJavaType()
+
+        val DELEGATE: DurationJavaType = DurationJavaType.INSTANCE
     }
 }
 

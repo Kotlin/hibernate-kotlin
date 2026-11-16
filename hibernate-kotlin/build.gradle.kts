@@ -47,6 +47,64 @@ tasks.withType<Test>().configureEach {
     }
 }
 
+val testSourceSet = sourceSets.test.get()
+
+val testHibernate8 = tasks.register<Test>("testHibernate8") {
+    group = "verification"
+    description = "Runs tests against the current Hibernate 8."
+    testClassesDirs = testSourceSet.output.classesDirs
+    classpath = testSourceSet.runtimeClasspath
+    useJUnitPlatform {
+        excludeTags("before8")
+    }
+}
+
+val compatibilityVersions = mapOf(
+    "60" to libs.versions.hibernate60.get(),
+    "66" to libs.versions.hibernate66.get(),
+    "70" to libs.versions.hibernate70.get(),
+    "710" to libs.versions.hibernate710.get(),
+    "71" to libs.versions.hibernate71.get(),
+    "720" to libs.versions.hibernate720.get(),
+    "730" to libs.versions.hibernate730.get(),
+    "740" to libs.versions.hibernate740.get(),
+    "74" to libs.versions.hibernate74.get(),
+)
+
+val compatibilityTests = compatibilityVersions.map { (suffix, hibernateVersion) ->
+    val runtimeClasspath = configurations.create("hibernate${suffix}TestRuntimeClasspath") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+        extendsFrom(configurations.testRuntimeClasspath.get())
+        attributes {
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_RUNTIME))
+        }
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.hibernate.orm") {
+                useVersion(hibernateVersion)
+                because("All Hibernate ORM modules must use the compatibility test version")
+            }
+        }
+    }
+
+    tasks.register<Test>("testHibernate$suffix") {
+        group = "verification"
+        description = "Runs tests against Hibernate $hibernateVersion."
+        testClassesDirs = testSourceSet.output.classesDirs
+        classpath = files(testSourceSet.output, sourceSets.main.get().output, runtimeClasspath)
+        useJUnitPlatform {
+            excludeTags("hibernate8")
+        }
+    }
+}
+
+tasks.test {
+    // Only tests for the different versions
+    enabled = false
+    dependsOn(testHibernate8, compatibilityTests)
+}
+
+
 repositories {
     mavenCentral()
 
